@@ -1,8 +1,8 @@
-export const VOLUME_BATCH_SIZE = 5
-export const VOLUME_REQUEST_TIMEOUT_MS = 10_000
-export const DEFAULT_VOLUME_SYNC_LIMIT = 150
-export const MAX_VOLUME_SYNC_LIMIT = 500
-export const SYNC_TIME_LIMIT_MS = 250_000
+export const VOLUME_BATCH_SIZE = 2
+export const VOLUME_REQUEST_TIMEOUT_MS = 8_000
+export const DEFAULT_VOLUME_SYNC_LIMIT = 10
+export const MAX_VOLUME_SYNC_LIMIT = 50
+export const SYNC_TIME_LIMIT_MS = 20_000
 
 export interface VolumeWorkItem {
   conditionId: string

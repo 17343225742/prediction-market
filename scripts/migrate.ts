@@ -341,10 +341,10 @@ async function createSyncVolumeCron(
   await createSyncCron(sql, {
     jobName: 'sync-volume',
     schedule: '*/10 * * * *',
-    endpointPath: '/api/sync/volume?limit=150',
+    endpointPath: '/api/sync/volume?limit=10',
     siteUrl,
     cronSecret,
-    timeoutMilliseconds: 60000,
+    timeoutMilliseconds: 30000,
   })
 }
 

@@ -220,8 +220,7 @@ function normalizeCursorParam(value: string | null): string | null {
 function hasFatalVolumeSyncErrors(errors: VolumeSyncStats['errors']): boolean {
   return errors.some(error =>
     error.context.startsWith('batch:')
-    || error.context.startsWith('update:')
-    || error.context.startsWith('volume:'),
+    || error.context.startsWith('update:'),
   )
 }
 
