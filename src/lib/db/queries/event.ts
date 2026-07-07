@@ -896,6 +896,41 @@ function buildSportsVerticalTagCondition(sportsVertical: SportsVertical | '' | u
     : sql`NOT ${hasEsportsTag}`
 }
 
+function buildSportsSectionCondition(sportsSection: string) {
+  const normalizedSportsSection = sportsSection.trim().toLowerCase()
+  if (normalizedSportsSection !== 'games' && normalizedSportsSection !== 'props') {
+    return null
+  }
+
+  const sectionTagSlugs = normalizedSportsSection === 'games'
+    ? ['games', 'game']
+    : ['props', 'prop']
+  const sportsTagsMatchCondition = buildSportsTagsMatchCondition(sectionTagSlugs)
+  const sportsMetadataSectionCondition = sportsTagsMatchCondition
+    ? exists(
+        db.select()
+          .from(event_sports)
+          .where(and(
+            eq(event_sports.event_id, events.id),
+            sportsTagsMatchCondition,
+          )),
+      )
+    : null
+  const genericTagSectionCondition = exists(
+    db.select()
+      .from(event_tags)
+      .innerJoin(tags, eq(event_tags.tag_id, tags.id))
+      .where(and(
+        eq(event_tags.event_id, events.id),
+        inArray(tags.slug, sectionTagSlugs),
+      )),
+  )
+
+  return sportsMetadataSectionCondition
+    ? or(sportsMetadataSectionCondition, genericTagSectionCondition)
+    : genericTagSectionCondition
+}
+
 function toOptionalIsoString(value: unknown): string | null {
   if (!value) {
     return null
@@ -1389,22 +1424,9 @@ async function buildEventListQueryContext({
     )
   }
 
-  const normalizedSportsSection = sportsSection.trim().toLowerCase()
-  if (normalizedSportsSection === 'games' || normalizedSportsSection === 'props') {
-    const sectionTagSlugs = normalizedSportsSection === 'games'
-      ? ['games', 'game']
-      : ['props', 'prop']
-    whereConditions.push(
-      exists(
-        db.select()
-          .from(event_tags)
-          .innerJoin(tags, eq(event_tags.tag_id, tags.id))
-          .where(and(
-            eq(event_tags.event_id, events.id),
-            inArray(tags.slug, sectionTagSlugs),
-          )),
-      ),
-    )
+  const sportsSectionCondition = buildSportsSectionCondition(sportsSection)
+  if (sportsSectionCondition) {
+    whereConditions.push(sportsSectionCondition)
   }
 
   const sportsVerticalCondition = buildSportsVerticalTagCondition(sportsVertical)
@@ -1637,22 +1659,9 @@ export const EventRepository = {
         )
       }
 
-      const normalizedSportsSection = sportsSection.trim().toLowerCase()
-      if (normalizedSportsSection === 'games' || normalizedSportsSection === 'props') {
-        const sectionTagSlugs = normalizedSportsSection === 'games'
-          ? ['games', 'game']
-          : ['props', 'prop']
-        whereConditions.push(
-          exists(
-            db.select()
-              .from(event_tags)
-              .innerJoin(tags, eq(event_tags.tag_id, tags.id))
-              .where(and(
-                eq(event_tags.event_id, events.id),
-                inArray(tags.slug, sectionTagSlugs),
-              )),
-          ),
-        )
+      const sportsSectionCondition = buildSportsSectionCondition(sportsSection)
+      if (sportsSectionCondition) {
+        whereConditions.push(sportsSectionCondition)
       }
 
       const sportsVerticalCondition = buildSportsVerticalTagCondition(sportsVertical)
