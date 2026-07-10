@@ -904,9 +904,9 @@ function SportsFeaturedLineMarketCarousel({
     <div className="grid gap-2.5">
       <div className="grid min-h-8 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <span className="min-w-0 truncate text-base font-semibold">{label}</span>
-        <div className="
+        <div className={cn(`
           grid grid-cols-[1.75rem_2.5rem_2.5rem_2.5rem_1.75rem] items-center gap-1 text-sm font-semibold tabular-nums
-        "
+        `)}
         >
           <LinePickerArrowButton
             direction="previous"
@@ -1308,27 +1308,27 @@ function FeaturedRightRail({
   `
   const sideCardContent = (
     <>
-      <span className="
+      <span className={cn(`
         pointer-events-none absolute bottom-0 left-[30%] h-px w-[40%] bg-linear-to-r from-transparent via-primary/60
         to-transparent
-      "
+      `)}
       />
       <DynamicIcon
         name={sideCard.icon as IconName}
         aria-hidden
-        className="
+        className={cn(`
           pointer-events-none absolute -top-6 -right-7 size-36 rotate-6 text-primary/8 transition-transform duration-300
           group-hover/side-card:scale-105
           motion-safe:animate-pulse
-        "
+        `)}
       />
 
       <div className="relative z-1 flex min-h-0 flex-1 flex-col pt-7 pb-4">
         <span
-          className="
+          className={cn(`
             mb-3 h-1 w-10 rounded-full bg-primary/70
             shadow-[0_0_18px_color-mix(in_oklab,var(--primary)_32%,transparent)]
-          "
+          `)}
         />
         <span className="line-clamp-2 max-w-[16rem] text-xl/tight font-semibold tracking-tight">
           {sideCard.title}
@@ -1343,11 +1343,11 @@ function FeaturedRightRail({
 
         {hasCta && (
           <span
-            className="
+            className={cn(`
               mt-auto ml-auto inline-flex h-9 max-w-full items-center gap-1.5 rounded-full border border-border/70
               bg-background/70 px-3 text-sm font-medium text-foreground shadow-sm shadow-black/4 transition-colors
               group-hover/side-card:border-primary/35 group-hover/side-card:text-primary
-            "
+            `)}
           >
             <span className="truncate">{sideCard.ctaLabel}</span>
             <ChevronRightIcon className="size-4 shrink-0" />
@@ -1422,12 +1422,12 @@ function FeaturedRightRailAction() {
         type="button"
         variant="outline"
         asChild
-        className="
+        className={cn(`
           h-10 w-full rounded-full bg-transparent text-muted-foreground shadow-none transition-colors
           hover:bg-secondary/80 hover:text-foreground
           dark:bg-transparent
           dark:hover:bg-secondary/80
-        "
+        `)}
       >
         <AppLink intentPrefetch href="/predictions/trending">
           Expand all
