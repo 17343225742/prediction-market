@@ -21,7 +21,8 @@ import {
   SearchIcon,
   XIcon,
 } from 'lucide-react'
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createWalletClient, custom, encodeFunctionData, erc20Abi } from 'viem'
 import { usePublicClient, useWalletClient } from 'wagmi'
 
@@ -33,6 +34,7 @@ import type {
   MarketMakingSourceFilter,
 } from '@/lib/admin-market-making'
 
+import { resolveCampaignsInstanceKey } from '@/app/[locale]/admin/market-making/_components/market-making-campaign-lookup'
 import MarketMakingCampaigns from '@/app/[locale]/admin/market-making/_components/MarketMakingCampaigns'
 import MarketMakingHowItWorks from '@/app/[locale]/admin/market-making/_components/MarketMakingHowItWorks'
 import { Button } from '@/components/ui/button'
@@ -181,6 +183,7 @@ interface MarketMakingCopy {
 }
 
 interface MarketMakingDiscoveryProps {
+  linkedCampaignId: string | null
   locale: string
   copy: MarketMakingCopy
   campaignsCopy: MarketMakingCampaignsCopy
@@ -466,15 +469,17 @@ function MarketAvatar({ item }: { item: MarketMakingDiscoveryItem }) {
   const imageUrl = normalizeImageUrl(item.iconUrl)
   if (imageUrl) {
     return (
-      <div className="size-12 shrink-0 overflow-hidden rounded-xl border bg-muted sm:size-14">
-        {/* oxlint-disable-next-line next/no-img-element -- Market images can come from external, runtime-defined hosts. */}
-        <img
+      <div className="relative size-12 shrink-0 overflow-hidden rounded-xl border bg-muted sm:size-14">
+        <Image
           src={imageUrl}
           alt=""
+          fill
+          sizes="56px"
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
           className="size-full object-cover"
+          unoptimized
         />
       </div>
     )
@@ -483,8 +488,14 @@ function MarketAvatar({ item }: { item: MarketMakingDiscoveryItem }) {
   if (item.source === 'polymarket') {
     return (
       <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-white p-2.5 sm:size-14">
-        {/* oxlint-disable-next-line next/no-img-element -- Local SVG fallback does not need image optimization. */}
-        <img src="/images/logos/polymarket-icon-black.svg" alt="Polymarket" className="size-full object-contain" />
+        <Image
+          src="/images/logos/polymarket-icon-black.svg"
+          alt="Polymarket"
+          width={40}
+          height={40}
+          className="size-full object-contain"
+          unoptimized
+        />
       </div>
     )
   }
@@ -630,15 +641,17 @@ function MarketRow({
               <div key={market.id} className="flex min-w-0 items-center justify-between gap-4 py-3 text-sm">
                 <span className="flex min-w-0 items-center gap-3">
                   {marketImageUrl && (
-                    <span className="size-9 shrink-0 overflow-hidden rounded-md bg-muted">
-                      {/* oxlint-disable-next-line next/no-img-element -- Market images can come from external sources. */}
-                      <img
+                    <span className="relative size-9 shrink-0 overflow-hidden rounded-md bg-muted">
+                      <Image
                         src={marketImageUrl}
                         alt=""
+                        fill
+                        sizes="36px"
                         loading="lazy"
                         decoding="async"
                         referrerPolicy="no-referrer"
                         className="size-full object-cover"
+                        unoptimized
                       />
                     </span>
                   )}
@@ -1117,8 +1130,10 @@ function CampaignDialog({
   useEffect(() => {
     activeEmailWallet.current = address
     emailLinkRequestId.current += 1
-    setEmailLinkPending(false)
-    setEmailVerificationPending(false)
+    queueMicrotask(() => {
+      setEmailLinkPending(false)
+      setEmailVerificationPending(false)
+    })
     return () => {
       emailLinkRequestId.current += 1
     }
@@ -1237,18 +1252,20 @@ function CampaignDialog({
     sponsorBalanceQuery.data !== undefined &&
     sponsorBalanceQuery.data < requiredBalanceAtomic
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open || !usesImportFlow || !importStorageKey) {
       return
     }
     const stored = window.localStorage.getItem(importStorageKey)
-    if (stored?.startsWith('0x')) {
-      setImportId(stored)
-    }
     const storedPayment = importPaymentStorageKey ? window.localStorage.getItem(importPaymentStorageKey) : null
-    if (storedPayment?.startsWith('0x')) {
-      setPendingImportPaymentHash(storedPayment)
-    }
+    queueMicrotask(() => {
+      if (stored?.startsWith('0x')) {
+        setImportId(stored)
+      }
+      if (storedPayment?.startsWith('0x')) {
+        setPendingImportPaymentHash(storedPayment)
+      }
+    })
   }, [importPaymentStorageKey, importStorageKey, open, usesImportFlow])
 
   const importQuery = useQuery({
@@ -1266,27 +1283,29 @@ function CampaignDialog({
     if (!importQuery.data) {
       return
     }
-    setImportValue(importQuery.data)
-    if (importPaymentStorageKey) {
-      if (importQuery.data.payment.rejected) {
-        window.localStorage.removeItem(importPaymentStorageKey)
-        setPendingImportPaymentHash(null)
-      } else if (
-        importQuery.data.payment.txHash &&
-        ['awaiting_payment', 'payment_confirming'].includes(importQuery.data.state)
-      ) {
-        window.localStorage.setItem(importPaymentStorageKey, importQuery.data.payment.txHash)
-        setPendingImportPaymentHash(importQuery.data.payment.txHash)
-      } else if (!['awaiting_payment', 'payment_confirming'].includes(importQuery.data.state)) {
-        window.localStorage.removeItem(importPaymentStorageKey)
-        setPendingImportPaymentHash(null)
+    queueMicrotask(() => {
+      setImportValue(importQuery.data)
+      if (importPaymentStorageKey) {
+        if (importQuery.data.payment.rejected) {
+          window.localStorage.removeItem(importPaymentStorageKey)
+          setPendingImportPaymentHash(null)
+        } else if (
+          importQuery.data.payment.txHash &&
+          ['awaiting_payment', 'payment_confirming'].includes(importQuery.data.state)
+        ) {
+          window.localStorage.setItem(importPaymentStorageKey, importQuery.data.payment.txHash)
+          setPendingImportPaymentHash(importQuery.data.payment.txHash)
+        } else if (!['awaiting_payment', 'payment_confirming'].includes(importQuery.data.state)) {
+          window.localStorage.removeItem(importPaymentStorageKey)
+          setPendingImportPaymentHash(null)
+        }
       }
-    }
-    if (!readyNotified && ['ready', 'activated'].includes(importQuery.data.state)) {
-      toast.success(copy.readyToSponsor)
-      setReadyNotified(true)
-      void refetchPreview()
-    }
+      if (!readyNotified && ['ready', 'activated'].includes(importQuery.data.state)) {
+        toast.success(copy.readyToSponsor)
+        setReadyNotified(true)
+        void refetchPreview()
+      }
+    })
   }, [copy.readyToSponsor, importPaymentStorageKey, importQuery.data, readyNotified, refetchPreview])
 
   function clearIssuedQuote() {
@@ -2039,8 +2058,10 @@ function NotificationSettingsButton({ copy, locale }: { copy: MarketMakingCopy; 
   useEffect(() => {
     activeAddress.current = address
     settingsRequestId.current += 1
-    setLoading(false)
-    setSettingsWallet(null)
+    queueMicrotask(() => {
+      setLoading(false)
+      setSettingsWallet(null)
+    })
     return () => {
       settingsRequestId.current += 1
     }
@@ -2238,26 +2259,19 @@ function NotificationSettingsButton({ copy, locale }: { copy: MarketMakingCopy; 
 }
 
 export default function MarketMakingDiscovery({
+  linkedCampaignId,
   locale,
   copy,
   campaignsCopy,
   howItWorksCopy,
 }: MarketMakingDiscoveryProps) {
-  const [linkedCampaignId, setLinkedCampaignId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [source, setSource] = useState<MarketMakingSourceFilter>('all')
-  const [activeTab, setActiveTab] = useState<'sponsor' | 'campaigns'>('sponsor')
+  const [activeTab, setActiveTab] = useState<'sponsor' | 'campaigns'>(() =>
+    linkedCampaignId ? 'campaigns' : 'sponsor',
+  )
   const [selectedMarket, setSelectedMarket] = useState<MarketMakingDiscoveryItem | null>(null)
   const [howItWorksOpen, setHowItWorksOpen] = useState(false)
-  useEffect(() => {
-    const value = new URLSearchParams(window.location.search).get('campaign')
-    setLinkedCampaignId(value && /^(0|[1-9][0-9]*)$/.test(value) ? value : null)
-  }, [])
-  useEffect(() => {
-    if (linkedCampaignId && /^(0|[1-9][0-9]*)$/.test(linkedCampaignId)) {
-      setActiveTab('campaigns')
-    }
-  }, [linkedCampaignId])
   const deferredQuery = useDeferredValue(query.trim())
   const filters = useMemo(
     () => [
@@ -2373,7 +2387,12 @@ export default function MarketMakingDiscovery({
         </TabsContent>
 
         <TabsContent value="campaigns" className="mt-5">
-          <MarketMakingCampaigns locale={locale} copy={campaignsCopy} />
+          <MarketMakingCampaigns
+            key={resolveCampaignsInstanceKey(linkedCampaignId)}
+            linkedCampaignId={linkedCampaignId}
+            locale={locale}
+            copy={campaignsCopy}
+          />
         </TabsContent>
       </Tabs>
 
